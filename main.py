@@ -7,6 +7,7 @@ from dash.dependencies import Input, Output, State
 from dash import dcc
 from dash import html
 from dash import dash_table
+from flaml import AutoML
 
 import pandas as pd
 
@@ -18,8 +19,8 @@ server = app.server
 app.config['suppress_callback_exceptions'] = True
 
 app.layout = html.Div([
-    html.H1(children='Smalltics Dashboard', style={'text-align': 'center'}), html.Br(),
-    html.H3(children='Upload your dataset and select the axes and plot and voila', style={'text-align': 'center'}),
+    html.H1(children='ML Using FLAML', style={'text-align': 'center'}), html.Br(),
+    html.H3(children='Upload your dataset and select the target', style={'text-align': 'center'}),
 
     dcc.Upload(
         id='upload-data',
@@ -77,34 +78,12 @@ def parse_contents(contents, filename):
 
         html.Hr(),  # horizontal line
         dcc.Dropdown(
-        id='x_axis',
+        id='target',
         options=[
             {'label': i, 'value': i} for i in df.columns
         ],
         clearable=False,
         ),
-        html.Br(), html.Br(),
-        dcc.Dropdown(
-        id='y_axis',
-        options=[
-            {'label': i, 'value': i} for i in df.columns
-        ],
-        clearable=False,
-        ),
-
-        html.Br(), html.Br(),
-        dcc.Dropdown(
-        id='plot_type',
-        options=[
-            {'label': 'Scatter Plot', 'value': 'scatter'},
-            {'label': 'Line Plot', 'value': 'line'},
-            {'label': 'Bar Plot', 'value': 'bar'},
-            {'label': 'Sunburst Plot', 'value': 'sunburst'},
-            {'label': 'Treemap Plot', 'value': 'treemap'},
-            {'label': 'Pie Chart', 'value': 'pie'}
-        ],
-        clearable=False,
-        )
     ], id='plot-div')
 
 
