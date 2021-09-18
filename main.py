@@ -2,12 +2,13 @@ import base64
 import io
 
 import dash
-import plotly.graph_objs as go
 from dash.dependencies import Input, Output, State
 from dash import dcc
 from dash import html
 from dash import dash_table
+from dash.html.Label import Label
 from flaml import AutoML
+from sklearn.model_selection import train_test_split 
 
 import pandas as pd
 
@@ -15,6 +16,7 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
+automl = AutoML()
 
 app.config['suppress_callback_exceptions'] = True
 
@@ -40,7 +42,7 @@ app.layout = html.Div([
         },
     ),
     html.Div(id='output-data-upload'),
-    html.Div(id='output-plot')
+    html.Div(id='output')
 ])
 
 
@@ -77,6 +79,17 @@ def parse_contents(contents, filename):
         html.Div(id='secret-df', hidden=True, children=df.to_json(orient='split')),
 
         html.Hr(),  # horizontal line
+        html.Label('Algorithm to perform'),
+        dcc.Dropdown(
+            id='algorithm',
+            options=[
+                {'label': 'Regression', 'value': 'regression'},
+                {'label': 'Classification', 'value': 'classification'}
+            ],
+            clearable=False,
+        ),
+        html.Hr(),  # horizontal line
+        html.Label('Target column'),
         dcc.Dropdown(
         id='target',
         options=[
@@ -84,7 +97,22 @@ def parse_contents(contents, filename):
         ],
         clearable=False,
         ),
-    ], id='plot-div')
+        html.Hr(),  # horizontal line
+        html.Label('Select size of training set'),
+        dcc.Slider(
+            id='training-set-size',
+            min=5,
+            max=100,
+            step=None,
+            marks={
+                5: '5%',
+                25: '25%',
+                50: '50%',
+                75: '75%',
+                100: '100%',
+            }
+        )
+    ], id='train-div')
 
 
 @app.callback(Output('output-data-upload', 'children'),
@@ -96,10 +124,26 @@ def update_output(list_of_contents, list_of_names):
         return children
 
 @app.callback(Output('output-plot', 'children'),
-                Input('x_axis', 'value'), Input('y_axis', 'value'), 
-                Input('plot_type', 'value'), Input('secret-df', 'children'))
-def return_plot(x_axis, y_axis, plot_type, dataset):
-    pass
+                Input('target', 'value'), Input('training-set-size', 'value'),
+                Input('algorithm', 'value'), 
+                Input('secret-df', 'children'))
+def return_plot(target, training_set_size, dataset, algorithm):
+    if training_set_size is not None:
+        df = pd.read_json(dataset, orient='split')
+
+        X = df.drop([target], axis=1)
+        y = df[target]
+
+        test_size = 1 - training_set_size / 100
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+        automl_settings = {
+            "time_budget": 60,
+            "metric": 'accuracy',
+            "task": algorithm,
+            "log_file_name": 'logs/train_log.log',
+        }
+        automl.fit(X_train, y_train, **automl_settings)
 
 if __name__ == '__main__':
-    app.run_server()
+    app.run_server(debug=True)
