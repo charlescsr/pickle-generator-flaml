@@ -1,4 +1,4 @@
+dash
 flaml
-flask
 gunicorn
 python-dotenv
