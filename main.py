@@ -115,11 +115,11 @@ def parse_contents(contents, filename):
             max=100,
             step=None,
             marks={
-                5: '5%',
-                25: '25%',
-                50: '50%',
-                75: '75%',
-                100: '100%',
+                5: {'label': '5 %', 'style': {'color': '#77b0b'}},
+                25: {'label': '25 %', 'style': {'color': '#28fad3'}},
+                50: {'label': '50 %', 'style': {'color': '#46fa28'}},
+                75: {'label': '75 % ', 'style': {'color': '#f6fa28'}},
+                100: {'label': '100 %', 'style': {'color': '#f50'}},
             }
         )
     ], id='train-div')
@@ -166,4 +166,4 @@ def return_pickle_file(target, training_set_size, algorithm, dataset):
         ], id='model_file')
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server()
