@@ -17,6 +17,8 @@
 mono_crash.*
 
 # Build results
+*.pickle
+.env
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/

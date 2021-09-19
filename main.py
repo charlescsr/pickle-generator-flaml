@@ -1,28 +1,38 @@
 import base64
 import io
+import os
 
 import dash
 from dash.dependencies import Input, Output, State
 from dash import dcc
 from dash import html
 from dash import dash_table
-from dash.html.Label import Label
+from flask import Flask, send_file
 from flaml import AutoML
+import pickle
+import hashlib
 from sklearn.model_selection import train_test_split 
 
 import pandas as pd
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-server = app.server
-automl = AutoML()
+server = Flask(__name__)
+app = dash.Dash(server=server, external_stylesheets=external_stylesheets)
+ID = os.environ.get('ID')
 
 app.config['suppress_callback_exceptions'] = True
 
+@server.route("/download_pkl/<id>")
+def download(id):
+    """Serve the pickle file"""
+    passwd = hashlib.sha256(ID.encode()).hexdigest()
+    if id == passwd:
+        return send_file("model.pickle", as_attachment=True)
+
 app.layout = html.Div([
-    html.H1(children='ML Using FLAML', style={'text-align': 'center'}), html.Br(),
-    html.H3(children='Upload your dataset and select the target', style={'text-align': 'center'}),
+    html.H1(children='Pickle File generator using AutoML', style={'text-align': 'center'}), html.Br(),
+    html.H3(children='Upload your dataset and select target and training set size and you get your pickle file', style={'text-align': 'center'}),
 
     dcc.Upload(
         id='upload-data',
@@ -42,7 +52,7 @@ app.layout = html.Div([
         },
     ),
     html.Div(id='output-data-upload'),
-    html.Div(id='output')
+    html.Div(id='output-model')
 ])
 
 
@@ -123,11 +133,11 @@ def update_output(list_of_contents, list_of_names):
         children = [parse_contents(list_of_contents, list_of_names)]
         return children
 
-@app.callback(Output('output-plot', 'children'),
+@app.callback(Output('output-model', 'children'),
                 Input('target', 'value'), Input('training-set-size', 'value'),
                 Input('algorithm', 'value'), 
                 Input('secret-df', 'children'))
-def return_plot(target, training_set_size, dataset, algorithm):
+def return_pickle_file(target, training_set_size, algorithm, dataset):
     if training_set_size is not None:
         df = pd.read_json(dataset, orient='split')
 
@@ -137,13 +147,23 @@ def return_plot(target, training_set_size, dataset, algorithm):
         test_size = 1 - training_set_size / 100
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+        automl = AutoML()
         automl_settings = {
-            "time_budget": 60,
+            "time_budget": 20,
             "metric": 'accuracy',
             "task": algorithm,
-            "log_file_name": 'logs/train_log.log',
+            "log_file_name": './train_log.log',
         }
         automl.fit(X_train, y_train, **automl_settings)
+        
+        with open("model.pickle", 'wb') as model:
+            pickle.dump(automl, model, pickle.HIGHEST_PROTOCOL)
+
+        return html.Div([
+            html.Hr(),
+            html.H5('Here is your pickle file...'),
+            html.A("Model File", href="/download_pkl/"+ str(hashlib.sha256(ID.encode()).hexdigest()))
+        ], id='model_file')
 
 if __name__ == '__main__':
     app.run_server(debug=True)
